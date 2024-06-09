@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import IngredientInput from './components/IngredientsInput.js';
-import IngredientList from './components/IngredientsList.js';
-import Auth from './components/Auth.js';
-import { addIngredient, getIngredients, suggestRecipe } from './Api';
+import IngredientInput from './components/IngredientInput';
+import IngredientList from './components/IngredientList';
+import Auth from './components/Auth';
+import { addIngredient, getIngredients, deleteIngredient, suggestRecipe } from './Api';
+import { Container, Box, Button, Typography, Paper, Grid } from '@mui/material';
 import './App.css';
 
 function App() {
@@ -17,12 +18,19 @@ function App() {
                 setIngredients(ingredients);
             }
             fetchIngredients();
+        } else {
+            setIngredients([]);
         }
     }, [user]);
 
     const handleAddIngredient = async (ingredient) => {
-        await addIngredient(ingredient);
-        setIngredients([...ingredients, ingredient]);
+        const response = await addIngredient(ingredient);
+        setIngredients([...ingredients, { ...ingredient, id: response.id }]);
+    };
+
+    const handleDeleteIngredient = async (id) => {
+        await deleteIngredient(id);
+        setIngredients(ingredients.filter((ingredient) => ingredient.id !== id));
     };
 
     const handleSuggestRecipe = async () => {
@@ -31,24 +39,32 @@ function App() {
     };
 
     return (
-        <div>
-            <h1>Recipe Suggester</h1>
-            {!user ? (
-                <Auth setUser={setUser} />
-            ) : (
-                <div>
-                    <IngredientInput onAddIngredient={handleAddIngredient} />
-                    <IngredientList ingredients={ingredients} />
-                    <button onClick={handleSuggestRecipe}>Get Recipe</button>
-                    {recipe && (
-                        <div>
-                            <h2>Suggested Recipe:</h2>
-                            <p>{recipe}</p>
-                        </div>
-                    )}
-                </div>
-            )}
-        </div>
+        <Container maxWidth="md" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '100vh', justifyContent: 'center' }}>
+            <Box textAlign="center" my={4}>
+                <Typography variant="h3">Recipe Suggester</Typography>
+            </Box>
+            <Grid container spacing={2} justifyContent="center">
+                {!user ? (
+                    <Grid item xs={12} sm={8} md={6}>
+                        <Auth setUser={setUser} />
+                    </Grid>
+                ) : (
+                    <Grid item xs={12} sm={8} md={6}>
+                        <IngredientInput onAddIngredient={handleAddIngredient} />
+                        <IngredientList ingredients={ingredients} onDelete={handleDeleteIngredient} />
+                        <Box textAlign="center" mt={4}>
+                            <Button variant="contained" color="primary" onClick={handleSuggestRecipe}>Get Recipe</Button>
+                        </Box>
+                        {recipe && (
+                            <Paper elevation={3} sx={{ padding: 2, marginTop: 2 }}>
+                                <Typography variant="h6">Suggested Recipe:</Typography>
+                                <Typography>{recipe}</Typography>
+                            </Paper>
+                        )}
+                    </Grid>
+                )}
+            </Grid>
+        </Container>
     );
 }
 

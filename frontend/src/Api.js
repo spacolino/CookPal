@@ -2,6 +2,8 @@ import axios from 'axios';
 
 const API_URL = 'http://localhost:5000';
 
+axios.defaults.withCredentials = true;
+
 export const signup = async (userData) => {
     const response = await axios.post(`${API_URL}/signup`, userData);
     return response.data;
@@ -25,6 +27,16 @@ export const addIngredient = async (ingredient) => {
 export const getIngredients = async () => {
     const response = await axios.get(`${API_URL}/ingredients`, { withCredentials: true });
     return response.data.ingredients;
+};
+
+export const deleteIngredient = async (id) => {
+    try {
+        const response = await axios.delete(`${API_URL}/ingredients/${id}`);
+        return response.data;
+    } catch (error) {
+        console.error('Error deleting ingredient:', error);
+        throw error;
+    }
 };
 
 export const suggestRecipe = async (ingredients) => {

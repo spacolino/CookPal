@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { signup, login, logout } from '../Api';
+import { signup, login } from '../Api';
+import { Box, Button, TextField, Typography, Paper } from '@mui/material';
+import { GoogleLogin } from 'react-google-login';
 
 const Auth = ({ setUser }) => {
     const [username, setUsername] = useState('');
@@ -26,66 +28,84 @@ const Auth = ({ setUser }) => {
         }
     };
 
-    const handleLogout = async () => {
+    const handleGoogleLoginSuccess = async (response) => {
         try {
-            await logout();
-            setUser(null);
+            const googleResponse = await fetch('http://localhost:5000/auth/google', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ token: response.tokenId })
+            });
+            const data = await googleResponse.json();
+            if (data.success) {
+                setUser(data.user);
+            } else {
+                alert('Google login failed');
+            }
         } catch (error) {
-            alert('Logout failed');
+            alert('Google login failed');
         }
     };
 
+    const handleGoogleLoginFailure = (response) => {
+        console.log('Google login failed:', response);
+        alert('Google login failed');
+    };
+
     return (
-        <div>
-            {isLogin ? (
-                <div>
-                    <h2>Login</h2>
-                    <input
-                        type="text"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        placeholder="Username"
-                    />
-                    <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Password"
-                    />
-                    <button onClick={handleLogin}>Login</button>
-                    <button onClick={() => setIsLogin(false)}>Sign Up</button>
-                </div>
-            ) : (
-                <div>
-                    <h2>Sign Up</h2>
-                    <input
-                        type="text"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        placeholder="Username"
-                    />
-                    <input
+        <Paper elevation={3} sx={{ padding: 4 }}>
+            <Typography variant="h4" gutterBottom>{isLogin ? 'Login' : 'Sign Up'}</Typography>
+            <Box>
+                {!isLogin && (
+                    <TextField
+                        label="Email"
                         type="email"
+                        fullWidth
+                        margin="normal"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="Email"
                     />
-                    <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Password"
-                    />
-                    <button onClick={handleSignup}>Sign Up</button>
-                    <button onClick={() => setIsLogin(true)}>Login</button>
-                </div>
-            )}
-            {setUser && (
-                <div>
-                    <button onClick={handleLogout}>Logout</button>
-                </div>
-            )}
-        </div>
+                )}
+                <TextField
+                    label="Username"
+                    type="text"
+                    fullWidth
+                    margin="normal"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                />
+                <TextField
+                    label="Password"
+                    type="password"
+                    fullWidth
+                    margin="normal"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                />
+                <Box mt={2}>
+                    {isLogin ? (
+                        <>
+                            <Button variant="contained" color="primary" onClick={handleLogin} fullWidth>Login</Button>
+                            <Button onClick={() => setIsLogin(false)} fullWidth>Sign Up</Button>
+                            <GoogleLogin
+                                clientId="your-google-client-id"
+                                buttonText="Login with Google"
+                                onSuccess={handleGoogleLoginSuccess}
+                                onFailure={handleGoogleLoginFailure}
+                                cookiePolicy={'single_host_origin'}
+                                style={{ width: '100%', marginTop: '10px' }}
+                            />
+                        </>
+                    ) : (
+                        <>
+                            <Button variant="contained" color="primary" onClick={handleSignup} fullWidth>Sign Up</Button>
+                            <Button onClick={() => setIsLogin(true)} fullWidth>Login</Button>
+                        </>
+                    )}
+                </Box>
+            </Box>
+        </Paper>
     );
 };
 
