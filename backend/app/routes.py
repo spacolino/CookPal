@@ -1,11 +1,10 @@
 from openai import OpenAI
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, redirect, url_for, session, current_app
 from flask_login import login_user, logout_user, login_required, current_user
-from .extensions import db, bcrypt
+from .extensions import db, bcrypt, oauth
 from .models import Ingredient, User
 from .middleware import check_token_limit
 import os
-import logging
 
 main = Blueprint('main', __name__)
 
@@ -68,6 +67,17 @@ def get_ingredients():
     ingredients = Ingredient.query.filter_by(user_id=current_user.id).all()
     return jsonify({'ingredients': [{'id': ing.id, 'name': ing.name, 'quantity': ing.quantity} for ing in ingredients]}), 200
 
+@main.route('/ingredients/<int:id>', methods=['DELETE'])
+@login_required
+def delete_ingredient(id):
+    ingredient = Ingredient.query.get_or_404(id)
+    if ingredient.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    db.session.delete(ingredient)
+    db.session.commit()
+    return jsonify({'message': 'Ingredient deleted'}), 200
+
 @main.route('/suggest-recipe', methods=['POST'])
 @login_required
 @check_token_limit
@@ -84,7 +94,7 @@ def suggest_recipe():
         model="gpt-4o",
         messages=[
             {"role": "system", "content": "You are a cooking assistant, skilled in explaining creative recipes with creative flair."},
-            {"role": "user", "content": f"Suggest a recipe using only the following ingredients: \n {ingredients_list}\n\nRecipe:"}
+            {"role": "user", "content": f"Suggest a recipe using only the following ingredients: \n {ingredients_list}\n\n Format the recipe as follows: \n 1. A short introduction.\n 2. A list of ingredients.\n 3. Step-by-step instructions.\n\nRecipe:"},
         ]            
     )
 
@@ -101,3 +111,22 @@ def suggest_recipe():
 
     image_url = dalle_response.data[0].url
     return jsonify({'recipe': recipe_text, 'image_url': image_url})  
+
+@main.route('/auth/google')
+def google_login():
+    redirect_uri = url_for('main.google_callback', _external=True)
+    return oauth.google.authorize_redirect(redirect_uri)
+
+@main.route('/auth/callback')
+def google_callback():
+    token = oauth.google.authorize_access_token()
+    user_info = oauth.google.parse_id_token(token)
+    user = User.query.filter_by(email=user_info['email']).first()
+
+    if user is None:
+        user = User(username=user_info['name'], email=user_info['email'])
+        db.session.add(user)
+        db.session.commit()
+
+    login_user(user)
+    return redirect('http://localhost:3000')  # Redirect to your frontend app

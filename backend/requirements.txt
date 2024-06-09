@@ -7,3 +7,5 @@ python-dotenv
 Flask-Login
 Flask-Bcrypt
 psycopg2-binary
+Authlib
+Flask-OAuthlib
